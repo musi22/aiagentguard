@@ -75,7 +75,7 @@ def _issue_session(db: Session, user_id: str, organization_id: str, response: Re
 
 def _me(db: Session, principal: Principal, csrf_token: str | None = None) -> dict:
     if principal.user_id is None:
-        return {"user": None, "organization": {"id": principal.organization_id}, "role": "api_key", "csrf_token": None}
+        return {"user": None, "organization": {"id": principal.organization_id}, "role": "api_key", "csrf_token": None}  # nosec B105
     user = db.get(User, principal.user_id)
     organization = db.get(Organization, principal.organization_id)
     workspaces = db.scalars(select(Workspace).where(Workspace.organization_id == principal.organization_id)).all()
@@ -253,17 +253,17 @@ def consume_magic_link(payload: MagicLinkConsumeInput, response: Response, db: S
 _OAUTH = {
     "microsoft": {
         "authorize": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
-        "token": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+        "token": "https://login.microsoftonline.com/common/oauth2/v2.0/token",  # nosec B105
         "userinfo": "https://graph.microsoft.com/oidc/userinfo", "scope": "openid profile email",
     },
     "google": {
         "authorize": "https://accounts.google.com/o/oauth2/v2/auth",
-        "token": "https://oauth2.googleapis.com/token",
+        "token": "https://oauth2.googleapis.com/token",  # nosec B105
         "userinfo": "https://openidconnect.googleapis.com/v1/userinfo", "scope": "openid profile email",
     },
     "github": {
         "authorize": "https://github.com/login/oauth/authorize",
-        "token": "https://github.com/login/oauth/access_token",
+        "token": "https://github.com/login/oauth/access_token",  # nosec B105
         "userinfo": "https://api.github.com/user", "scope": "read:user user:email",
     },
 }

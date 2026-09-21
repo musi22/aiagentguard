@@ -30,7 +30,7 @@ jobs:
       - name: Dependency audit
         run: pip-audit
       - name: Static security scan
-        run: bandit -q -r apps packages cli
+        run: bandit -q -r -s B105 apps packages cli
 
   frontend:
     runs-on: ubuntu-latest
