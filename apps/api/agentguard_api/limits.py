@@ -74,8 +74,8 @@ def acquire_rate_limits(db: Session, organization_id: str, facts: dict[str, Any]
             """
             now_epoch = int(datetime.now(timezone.utc).timestamp())
             for limit in matched:
-                bucket = now_epoch - now_epoch % limit.window_seconds
-                key = f"agentguard:rate:{organization_id}:{limit.id}:{bucket}"
+                bucket_epoch = now_epoch - now_epoch % limit.window_seconds
+                key = f"agentguard:rate:{organization_id}:{limit.id}:{bucket_epoch}"
                 if int(client.eval(script, 1, key, limit.max_requests, limit.window_seconds)) != 1:
                     return False, f"Rate limit exceeded: {limit.max_requests} requests per {limit.window_seconds} seconds"
             return True, None
@@ -87,20 +87,20 @@ def acquire_rate_limits(db: Session, organization_id: str, facts: dict[str, Any]
     now = datetime.now(timezone.utc)
     for limit in matched:
         start = _bucket_start(now, limit.window_seconds)
-        bucket = db.scalar(
+        bucket_record = db.scalar(
             select(RateLimitBucket).where(
                 RateLimitBucket.rate_limit_id == limit.id, RateLimitBucket.bucket_start == start
             ).with_for_update()
         )
-        if bucket is None:
-            bucket = RateLimitBucket(
+        if bucket_record is None:
+            bucket_record = RateLimitBucket(
                 organization_id=organization_id, rate_limit_id=limit.id, bucket_start=start, count=0
             )
-            db.add(bucket)
+            db.add(bucket_record)
             db.flush()
-        if bucket.count >= limit.max_requests:
+        if bucket_record.count >= limit.max_requests:
             return False, f"Rate limit exceeded: {limit.max_requests} requests per {limit.window_seconds} seconds"
-        bucket.count += 1
+        bucket_record.count += 1
     return True, None
 
 
