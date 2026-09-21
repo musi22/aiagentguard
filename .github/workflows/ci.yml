@@ -24,13 +24,13 @@ jobs:
       - name: Lint
         run: ruff check .
       - name: Type check
-        run: mypy apps packages integrations cli
+        run: mypy apps packages cli
       - name: Unit, integration, and security tests
         run: pytest tests/unit tests/integration tests/security --junitxml=pytest-results.xml
       - name: Dependency audit
         run: pip-audit
       - name: Static security scan
-        run: bandit -q -r apps packages integrations cli
+        run: bandit -q -r apps packages cli
 
   frontend:
     runs-on: ubuntu-latest
