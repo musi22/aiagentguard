@@ -1,0 +1,139 @@
+name: Release staging and production
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: agentguard-release
+  cancel-in-progress: false
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ./packages/shared-types ./packages/policy-engine ./packages/risk-engine ".[dev]"
+      - run: ruff check . && mypy apps packages integrations cli
+      - run: pytest tests/unit tests/integration tests/security
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci && npm run typecheck && npm run build
+        working-directory: apps/web
+
+  staging:
+    needs: quality
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_VAR_unique_suffix: ${{ vars.AZURE_UNIQUE_SUFFIX }}
+      TF_VAR_image_tag: ${{ github.sha }}
+      TF_VAR_github_repository: ${{ github.repository }}
+      TF_VAR_budget_amount: ${{ vars.AZURE_BUDGET_AMOUNT }}
+      TF_VAR_budget_contact_emails: '["${{ vars.FINOPS_EMAIL }}"]'
+      TF_VAR_alert_action_group_email: ${{ vars.OPERATIONS_EMAIL }}
+      TF_VAR_database_admin_password: ${{ secrets.DATABASE_ADMIN_PASSWORD }}
+      TF_VAR_payload_encryption_key: ${{ secrets.PAYLOAD_ENCRYPTION_KEY }}
+    outputs:
+      gateway_url: ${{ steps.urls.outputs.gateway_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Configure remote state
+        run: |
+          printf '%s\n' \
+            'resource_group_name="${{ vars.TF_STATE_RESOURCE_GROUP }}"' \
+            'storage_account_name="${{ vars.TF_STATE_STORAGE_ACCOUNT }}"' \
+            'container_name="tfstate"' \
+            'key="staging.tfstate"' \
+            'use_azuread_auth=true' > "$RUNNER_TEMP/backend.hcl"
+      - name: Deploy staging and run migrations before traffic restart
+        env:
+          BACKEND_CONFIG: ${{ runner.temp }}/backend.hcl
+        run: ./scripts/deploy.sh staging "${{ github.sha }}"
+      - id: urls
+        run: echo "gateway_url=$(terraform -chdir=infra/terraform/environments/staging output -raw gateway_url)" >> "$GITHUB_OUTPUT"
+
+  staging_e2e:
+    needs: staging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+        working-directory: apps/web
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - name: Run end-to-end tests against staging
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ needs.staging.outputs.gateway_url }}
+        run: npm run test:e2e
+        working-directory: apps/web
+
+  production:
+    needs: staging_e2e
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_VAR_unique_suffix: ${{ vars.AZURE_UNIQUE_SUFFIX }}
+      TF_VAR_image_tag: ${{ github.sha }}
+      TF_VAR_github_repository: ${{ github.repository }}
+      TF_VAR_budget_amount: ${{ vars.AZURE_BUDGET_AMOUNT }}
+      TF_VAR_budget_contact_emails: '["${{ vars.FINOPS_EMAIL }}"]'
+      TF_VAR_alert_action_group_email: ${{ vars.OPERATIONS_EMAIL }}
+      TF_VAR_database_admin_password: ${{ secrets.DATABASE_ADMIN_PASSWORD }}
+      TF_VAR_payload_encryption_key: ${{ secrets.PAYLOAD_ENCRYPTION_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Configure remote state
+        run: |
+          printf '%s\n' \
+            'resource_group_name="${{ vars.TF_STATE_RESOURCE_GROUP }}"' \
+            'storage_account_name="${{ vars.TF_STATE_STORAGE_ACCOUNT }}"' \
+            'container_name="tfstate"' \
+            'key="prod.tfstate"' \
+            'use_azuread_auth=true' > "$RUNNER_TEMP/backend.hcl"
+      - name: Deploy production after environment approval
+        env:
+          BACKEND_CONFIG: ${{ runner.temp }}/backend.hcl
+        run: ./scripts/deploy.sh prod "${{ github.sha }}"
+      - name: Verify production gateway
+        run: |
+          gateway_url="$(terraform -chdir=infra/terraform/environments/prod output -raw gateway_url)"
+          curl --fail --retry 12 --retry-delay 10 "$gateway_url/health"

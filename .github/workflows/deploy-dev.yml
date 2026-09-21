@@ -1,0 +1,66 @@
+name: Deploy dev
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: agentguard-dev
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    environment: dev
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_VAR_unique_suffix: ${{ vars.AZURE_UNIQUE_SUFFIX }}
+      TF_VAR_image_tag: ${{ github.event.workflow_run.head_sha || github.sha }}
+      TF_VAR_github_repository: ${{ github.repository }}
+      TF_VAR_budget_amount: ${{ vars.AZURE_BUDGET_AMOUNT }}
+      TF_VAR_budget_contact_emails: '["${{ vars.FINOPS_EMAIL }}"]'
+      TF_VAR_alert_action_group_email: ${{ vars.OPERATIONS_EMAIL }}
+      TF_VAR_database_admin_password: ${{ secrets.DATABASE_ADMIN_PASSWORD }}
+      TF_VAR_payload_encryption_key: ${{ secrets.PAYLOAD_ENCRYPTION_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Configure remote state
+        shell: bash
+        run: |
+          printf '%s\n' \
+            'resource_group_name="${{ vars.TF_STATE_RESOURCE_GROUP }}"' \
+            'storage_account_name="${{ vars.TF_STATE_STORAGE_ACCOUNT }}"' \
+            'container_name="tfstate"' \
+            'key="dev.tfstate"' \
+            'use_azuread_auth=true' > "$RUNNER_TEMP/backend.hcl"
+      - name: Provision, build immutable images, migrate, and deploy
+        env:
+          BACKEND_CONFIG: ${{ runner.temp }}/backend.hcl
+        run: ./scripts/deploy.sh dev "${{ github.event.workflow_run.head_sha || github.sha }}"
+      - name: Smoke test
+        run: |
+          gateway_url="$(terraform -chdir=infra/terraform/environments/dev output -raw gateway_url)"
+          curl --fail --retry 12 --retry-delay 10 "$gateway_url/health"
+
