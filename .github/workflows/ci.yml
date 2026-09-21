@@ -24,7 +24,7 @@ jobs:
       - name: Lint
         run: ruff check .
       - name: Type check
-        run: mypy apps packages cli
+        run: mypy --exclude 'build' apps packages cli
       - name: Unit, integration, and security tests
         run: pytest tests/unit tests/integration tests/security --junitxml=pytest-results.xml
       - name: Dependency audit

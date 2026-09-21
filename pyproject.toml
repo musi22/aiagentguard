@@ -41,4 +41,10 @@ ignore = ["B008", "S101"]
 python_version = "3.11"
 ignore_missing_imports = true
 check_untyped_defs = true
-exclude = [".venv", "node_modules"]
+exclude = [
+  "\\.venv",
+  "node_modules",
+  "build",
+  "dist",
+  "\\.egg-info",
+]
