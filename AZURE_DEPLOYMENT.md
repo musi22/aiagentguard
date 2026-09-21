@@ -30,7 +30,26 @@ az provider register --namespace Microsoft.Storage
 Availability and quotas differ by region. Confirm that the chosen region supports
 PostgreSQL zone-redundant HA and Azure Managed Redis before a production apply.
 
-## 2. Create encrypted remote state
+## 2. Automated Azure Setup (Recommended)
+
+To automatically create the Terraform state storage account, register the Microsoft Entra application with federated OIDC credentials for GitHub Actions, and configure all GitHub repository variables with a single command:
+
+In Azure Cloud Shell (`https://shell.azure.com`) or bash:
+```bash
+./scripts/setup_azure_oidc.sh
+```
+
+Or in PowerShell:
+```powershell
+.\scripts\setup_azure_oidc.ps1
+```
+
+Once executed, trigger the automated deployment pipeline from GitHub Actions:
+```bash
+gh workflow run "Deploy dev" --repo musi22/aiagentguard
+```
+
+## 3. Manual Remote State & App Registration (Alternative)
 
 State contains sensitive values even though Terraform redacts them from terminal
 output. Put it in a dedicated account with Entra authorization and versioning.
