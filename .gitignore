@@ -5,6 +5,7 @@ out/
 __pycache__/
 *.pyc
 .pytest_cache/
+.tmp-tests/
 .ruff_cache/
 .mypy_cache/
 .env
