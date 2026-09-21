@@ -1,0 +1,15 @@
+unique_suffix            = "a1b2c3"
+image_tag                = "0000000000000000000000000000000000000000"
+github_repository        = "your-org/agentguard"
+budget_amount            = 250
+budget_contact_emails    = ["finops@example.com"]
+alert_action_group_email = "operations@example.com"
+public_url                = "https://api.staging.agentguard.example"
+web_url                   = "https://app.staging.agentguard.example"
+cors_origins              = ["https://app.staging.agentguard.example"]
+postgresql_allowed_ips = {
+  github_runner = { start_ip = "203.0.113.11", end_ip = "203.0.113.11" }
+}
+
+# Inject TF_VAR_database_admin_password and TF_VAR_payload_encryption_key from
+# the protected staging GitHub environment.

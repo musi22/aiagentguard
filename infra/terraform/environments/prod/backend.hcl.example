@@ -1,0 +1,6 @@
+resource_group_name  = "rg-agentguard-tfstate"
+storage_account_name = "agentguardtfstateUNIQUE"
+container_name       = "tfstate"
+key                  = "prod.tfstate"
+use_azuread_auth     = true
+

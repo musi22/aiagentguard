@@ -1,0 +1,14 @@
+unique_suffix            = "a1b2c3"
+image_tag                = "0000000000000000000000000000000000000000"
+github_repository        = "your-org/agentguard"
+budget_amount            = 2500
+budget_contact_emails    = ["finops@example.com"]
+alert_action_group_email = "oncall@example.com"
+# Leave null for the generated Front Door endpoints. Set only after owned custom
+# domains are bound and validated in Front Door.
+public_url   = null
+web_url      = null
+cors_origins = []
+
+# Inject TF_VAR_database_admin_password and TF_VAR_payload_encryption_key from
+# the protected production GitHub environment. Do not store them in this file.

@@ -1,0 +1,13 @@
+output "resource_group_name" { value = module.agentguard.resource_group_name }
+output "container_registry_name" { value = module.agentguard.container_registry_name }
+output "container_app_environment_name" { value = module.agentguard.container_app_environment_name }
+output "api_container_app_name" { value = module.agentguard.api_container_app_name }
+output "gateway_container_app_name" { value = module.agentguard.gateway_container_app_name }
+output "worker_job_name" { value = module.agentguard.worker_job_name }
+output "migration_job_name" { value = module.agentguard.migration_job_name }
+output "api_url" { value = module.agentguard.api_url }
+output "gateway_url" { value = module.agentguard.gateway_url }
+output "dashboard_hostname" { value = module.agentguard.dashboard_hostname }
+output "dashboard_url" { value = module.agentguard.dashboard_url }
+output "static_web_app_name" { value = module.agentguard.static_web_app_name }
+output "key_vault_url" { value = module.agentguard.key_vault_url }

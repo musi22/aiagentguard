@@ -1,0 +1,119 @@
+name: agentguard
+
+x-python-env: &python-env
+  ENVIRONMENT: development
+  DATABASE_URL: postgresql+psycopg://agentguard:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/agentguard
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_SSL: "false"
+  REDIS_AUTH: none
+  PAYLOAD_ENCRYPTION_KEY: ${PAYLOAD_ENCRYPTION_KEY:?Set a Fernet PAYLOAD_ENCRYPTION_KEY in .env}
+  SESSION_SECURE: "false"
+  CORS_ORIGINS: http://localhost:3000
+  PUBLIC_URL: http://localhost:8000
+  WEB_URL: http://localhost:3000
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: agentguard
+      POSTGRES_USER: agentguard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentguard -d agentguard"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: .
+      target: api
+    command: ["alembic", "upgrade", "head"]
+    environment: *python-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      target: api
+    environment: *python-env
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: .
+      target: gateway
+    environment:
+      <<: *python-env
+      AGENTGUARD_API_INTERNAL_URL: http://api:8000
+    ports:
+      - "8001:8001"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      target: worker
+    environment:
+      <<: *python-env
+      WORKER_ONCE: "false"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+        NEXT_PUBLIC_GATEWAY_URL: http://localhost:8001
+    ports:
+      - "3000:80"
+    depends_on:
+      api:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:

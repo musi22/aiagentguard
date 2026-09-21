@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #070c16; color: #e8edf5; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+::selection { background: #9ef01a; color: #071014; }
+.grid-bg { background-image: linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px); background-size: 32px 32px; }
+.card { border: 1px solid #263149; background: rgba(16,26,46,.8); border-radius: 16px; box-shadow: 0 18px 50px rgba(0,0,0,.18); }
+.field { width: 100%; border: 1px solid #34405a; background: #0a1221; border-radius: 10px; padding: 10px 12px; color: white; outline: none; }
+.field:focus { border-color: #9ef01a; box-shadow: 0 0 0 3px rgba(158,240,26,.08); }
+.btn { border-radius: 10px; padding: 9px 13px; font-weight: 650; transition: .15s ease; display: inline-flex; align-items: center; gap: 7px; justify-content: center; }
+.btn-primary { background: #9ef01a; color: #111a0d; }
+.btn-primary:hover { background: #b4fa4b; }
+.btn-secondary { border: 1px solid #34405a; color: #dbe4f4; background: #111b2f; }
+.btn-secondary:hover { border-color: #596783; }
+.btn-danger { border: 1px solid #713b47; color: #ffacb9; background: #29141a; }
+.label { display: block; color: #aab5ca; font-size: 12px; font-weight: 700; letter-spacing: .04em; margin-bottom: 6px; }
+.scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+.scrollbar::-webkit-scrollbar-thumb { background: #34405a; border-radius: 10px; }
+@media (prefers-reduced-motion: no-preference) { .fade { animation: fade .25s ease; } @keyframes fade { from { opacity:0; transform:translateY(4px) } } }
