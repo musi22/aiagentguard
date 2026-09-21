@@ -11,8 +11,8 @@ ROOT = Path(__file__).resolve().parents[1]
 for p in ["apps/api", "apps/gateway", "apps/worker", "packages/policy-engine", "packages/risk-engine", "packages/shared-types", "packages/sdk-python", "cli"]:
     sys.path.insert(0, str(ROOT / p))
 
-from fastapi.testclient import TestClient
-from agentguard_api.main import app
+from fastapi.testclient import TestClient  # noqa: E402
+from agentguard_api.main import app  # noqa: E402
 
 def run_production_loop_verification():
     print("=" * 70)
@@ -197,7 +197,7 @@ def run_production_loop_verification():
     assert verify_resp.status_code == 200
     verify_data = verify_resp.json()
     assert verify_data["valid"] is True
-    print(f"   -> SHA-256 Hash Chain Integrity: VALID (all blocks chained)")
+    print("   -> SHA-256 Hash Chain Integrity: VALID (all blocks chained)")
 
     audit_resp = client.get("/api/v1/audit", headers=admin_headers)
     audit_events = audit_resp.json()

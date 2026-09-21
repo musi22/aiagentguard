@@ -102,7 +102,7 @@ variable "alert_action_group_email" {
 }
 
 variable "cors_origins" {
-  type = list(string)
+  type    = list(string)
   default = []
 }
 
